@@ -8,6 +8,11 @@ from qc_module import apply_qc
 from evaluation import evaluate
 from plots import scatter_plot
 from performance_summary import generate_performance_summary
+from tg_stratified import tg_stratified_analysis
+from learning_curve_module import generate_learning_curves
+from bland_altman import bland_altman_plot
+from performance_summary import generate_performance_summary
+
 
 
 # -------------------------------------------------
