@@ -40,7 +40,8 @@ This framework:
   pip install -r requirements.txt
 **▶️ How to Run**
   Place your dataset inside:
-  data/LDL_DATA.xlsx
+  data/LDL_Internal_Training_Test_Dataset1.xlsx
+  data/LDL_Secondary_Internal_Validation_Dataset1.xlsx
 
 **Required columns:**
   TC
