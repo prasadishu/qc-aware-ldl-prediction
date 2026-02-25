@@ -6,95 +6,114 @@ from formulas import friedewald, martin, sampson
 from models import get_models
 from qc_module import apply_qc
 from evaluation import evaluate
-from plots import scatter_plot
+
 from performance_summary import generate_performance_summary
 from tg_stratified import tg_stratified_analysis
 from learning_curve_module import generate_learning_curves
 from bland_altman import bland_altman_plot
-from performance_summary import generate_performance_summary
 
 
-
-# -------------------------------------------------
-# Create result directories
-# -------------------------------------------------
+# -------------------------------------------------------
+# Create results directories
+# -------------------------------------------------------
 os.makedirs("results", exist_ok=True)
 os.makedirs("results/figures", exist_ok=True)
 
 
-# -------------------------------------------------
+# -------------------------------------------------------
 # Load datasets
-# -------------------------------------------------
+# -------------------------------------------------------
 internal_df = load_dataset("data/LDL_Internal_Training_Test_Dataset1.xlsx")
 secondary_df = load_dataset("data/LDL_Secondary_Internal_Validation_Dataset1.xlsx")
 
 
+# -------------------------------------------------------
+# FUNCTION TO PROCESS DATASET
+# -------------------------------------------------------
 def process_dataset(df, dataset_name):
+
+    print(f"\n🔹 Processing {dataset_name} dataset")
 
     X = df[["TC", "TG", "HDL_C"]]
     y = df["LDL_direct"]
 
-    # Formula predictions
-    df["Friedewald"] = friedewald(df["TC"], df["TG"], df["HDL_C"])
-    df["Martin"] = martin(df["TC"], df["TG"], df["HDL_C"])
-    df["Sampson"] = sampson(df["TC"], df["TG"], df["HDL_C"])
+    # ---------------------------------------------------
+    # 1️⃣ Calculate Formula-Based LDL
+    # ---------------------------------------------------
+    df["LDL_Friedewald"] = friedewald(df["TC"], df["TG"], df["HDL_C"])
+    df["LDL_Martin"] = martin(df["TC"], df["TG"], df["HDL_C"])
+    df["LDL_Sampson"] = sampson(df["TC"], df["TG"], df["HDL_C"])
 
+    # ---------------------------------------------------
+    # 2️⃣ Train ML Models + Apply QC
+    # ---------------------------------------------------
     models = get_models()
 
     for name, model in models.items():
 
+        print(f"Training {name}...")
+
         model.fit(X, y)
         preds = model.predict(X)
+
         preds_qc = apply_qc(preds, y)
 
-        df[name] = preds_qc
+        df[f"LDL_{name}_QC"] = preds_qc
 
-    # Save CSV
-    output_path = f"results/predictions_{dataset_name}.csv"
-    df.to_csv(output_path, index=False)
+    # ---------------------------------------------------
+    # 3️⃣ Save Prediction CSV
+    # ---------------------------------------------------
+    prediction_path = f"results/predictions_{dataset_name}.csv"
+    df.to_csv(prediction_path, index=False)
+    print(f"✅ Predictions saved → {prediction_path}")
 
-    print(f"\n✅ Saved: {output_path}")
+    # ---------------------------------------------------
+    # 4️⃣ Generate Performance Summary CSV
+    # ---------------------------------------------------
+    prediction_cols = [
+        "LDL_RandomForest_QC",
+        "LDL_XGBoost_QC",
+        "LDL_CatBoost_QC",
+        "LDL_SVR_QC",
+        "LDL_Martin",
+        "LDL_Friedewald",
+        "LDL_Sampson"
+    ]
 
-    # Print metrics
-    print(f"\n📊 Performance on {dataset_name} dataset:")
+    summary_df = generate_performance_summary(df, prediction_cols)
 
-    for col in ["Friedewald", "Martin", "Sampson"] + list(models.keys()):
-        r2, rmse, pcc = evaluate(y, df[col])
-        print(f"{col}: R²={r2:.3f} | RMSE={rmse:.3f} | PCC={pcc:.3f}")
+    print("\n📊 Performance Summary:")
+    print(summary_df)
 
- prediction_cols = [
-    "Friedewald",
-    "Martin",
-    "Sampson",
-    "CatBoost",
-    "XGBoost",
-    "RandomForest",
-    "SVR"
-]
+    # ---------------------------------------------------
+    # 5️⃣ TG-Stratified Analysis
+    # ---------------------------------------------------
+    tg_stratified_analysis(df, prediction_cols)
+
+    # ---------------------------------------------------
+    # 6️⃣ Bland–Altman Plots (ML models only)
+    # ---------------------------------------------------
+    for col in prediction_cols:
+        bland_altman_plot(
+            df["LDL_direct"],
+            df[col],
+            f"{col}_{dataset_name}"
+        )
+
+    # ---------------------------------------------------
+    # 7️⃣ Learning Curves (ML models only)
+    # ---------------------------------------------------
+    for name, model in models.items():
+        generate_learning_curves(model, X, y, f"{name}_{dataset_name}")
+
+    print(f"\n🎯 Completed {dataset_name} dataset.\n")
 
 
-for name, model in models.items():
-    generate_learning_curves(model, X, y, name)
-
-    # Generate scatter plot
-    preds_dict = {col: df[col] for col in ["Friedewald", "Martin", "Sampson"] + list(models.keys())}
-    scatter_plot(y, preds_dict, f"Scatter_{dataset_name}.jpg")
-
-
-# -------------------------------------------------
-# Run processing
-# -------------------------------------------------
+# -------------------------------------------------------
+# RUN PIPELINE
+# -------------------------------------------------------
 process_dataset(LDL_Internal_Training_Test_Dataset1_df, "LDL_Internal_Training_Test_Dataset1")
 process_dataset(LDL_Secondary_Internal_Validation_Dataset1_df, "LDL_Secondary_Internal_Validation_Dataset1")
-generate_performance_summary(LDL_Internal_Training_Test_Dataset1_df, prediction_cols)
-tg_stratified_analysis(LDL_Internal_Training_Test_Dataset1_df, prediction_cols)
-bland_altman_plot(
-    LDL_Internal_Training_Test_Dataset1_df["LDL_direct"],
-    LDL_Internal_Training_Test_Dataset1_df["RandomForest"],
-    "RandomForest"
-)
-models = get_models()
-X = LDL_Internal_Training_Test_Dataset1_df[["TC", "TG", "HDL_C"]]
-y = LDL_Internal_Training_Test_Dataset1_df["LDL_direct"]
 
-print("\n🎯 All done successfully.")
+print("\n🚀 All modules executed successfully.")
+
