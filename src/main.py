@@ -7,6 +7,7 @@ from models import get_models
 from qc_module import apply_qc
 from evaluation import evaluate
 from plots import scatter_plot
+from performance_summary import generate_performance_summary
 
 
 # -------------------------------------------------
@@ -19,8 +20,8 @@ os.makedirs("results/figures", exist_ok=True)
 # -------------------------------------------------
 # Load datasets
 # -------------------------------------------------
-internal_df = load_dataset("data/internal_dataset.xlsx")
-secondary_df = load_dataset("data/secondary_dataset.xlsx")
+internal_df = load_dataset("data/LDL_Internal_Training_Test_Dataset1.xlsx")
+secondary_df = load_dataset("data/LDL_Secondary_Internal_Validation_Dataset1.xlsx")
 
 
 def process_dataset(df, dataset_name):
@@ -56,6 +57,20 @@ def process_dataset(df, dataset_name):
         r2, rmse, pcc = evaluate(y, df[col])
         print(f"{col}: R²={r2:.3f} | RMSE={rmse:.3f} | PCC={pcc:.3f}")
 
+ prediction_cols = [
+    "Friedewald",
+    "Martin",
+    "Sampson",
+    "CatBoost",
+    "XGBoost",
+    "RandomForest",
+    "SVR"
+]
+
+
+for name, model in models.items():
+    generate_learning_curves(model, X, y, name)
+
     # Generate scatter plot
     preds_dict = {col: df[col] for col in ["Friedewald", "Martin", "Sampson"] + list(models.keys())}
     scatter_plot(y, preds_dict, f"Scatter_{dataset_name}.jpg")
@@ -64,7 +79,17 @@ def process_dataset(df, dataset_name):
 # -------------------------------------------------
 # Run processing
 # -------------------------------------------------
-process_dataset(internal_df, "internal")
-process_dataset(secondary_df, "secondary")
+process_dataset(LDL_Internal_Training_Test_Dataset1_df, "LDL_Internal_Training_Test_Dataset1")
+process_dataset(LDL_Secondary_Internal_Validation_Dataset1_df, "LDL_Secondary_Internal_Validation_Dataset1")
+generate_performance_summary(LDL_Internal_Training_Test_Dataset1_df, prediction_cols)
+tg_stratified_analysis(LDL_Internal_Training_Test_Dataset1_df, prediction_cols)
+bland_altman_plot(
+    LDL_Internal_Training_Test_Dataset1_df["LDL_direct"],
+    LDL_Internal_Training_Test_Dataset1_df["RandomForest"],
+    "RandomForest"
+)
+models = get_models()
+X = LDL_Internal_Training_Test_Dataset1_df[["TC", "TG", "HDL_C"]]
+y = LDL_Internal_Training_Test_Dataset1_df["LDL_direct"]
 
 print("\n🎯 All done successfully.")
