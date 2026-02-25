@@ -34,8 +34,7 @@ This framework:
 
     ⚙️ Installation
 **1️⃣ Clone the repository**
-  git clone https://github.com/yourusername/LDL_QC_Aware_ML.git
-  cd LDL_QC_Aware_ML
+  git clone (https://github.com/prasadishu/qc-aware-ldl-prediction.git)
 **2️⃣ Install dependencies**
   pip install -r requirements.txt
 **▶️ How to Run**
@@ -55,6 +54,7 @@ Then run: python src/main.py
 
 📁 Predictions
    results/predictions_internal.csv
+   results/predictions_Secondary_internal.csv
 
 **📈 Figures**
        Actual vs Predicted plots
