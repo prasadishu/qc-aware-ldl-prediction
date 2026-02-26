@@ -11,4 +11,4 @@ def evaluate(y_true, y_pred):
 print(f"R²: {r2:.3f}")
 print(f"RMSE: {rmse:.3f}")
 print(f"MSE: {mse:.3f}")
-print(f"PCC: {pcc:.3f}"
+print(f"PCC: {pcc:.3f}")
