@@ -26,7 +26,12 @@ os.makedirs("results/figures", exist_ok=True)
 internal_df = load_dataset("data/LDL_Internal_Training_Test_Dataset1.xlsx")
 secondary_df = load_dataset("data/LDL_Secondary_Internal_Validation_Dataset1.xlsx")
 
+r2, rmse, mse, pcc = evaluate(y_test, predictions)
 
+print(f"R²: {r2:.3f}")
+print(f"RMSE: {rmse:.3f}")
+print(f"MSE: {mse:.3f}")
+print(f"PCC: {pcc:.3f}")
 # -------------------------------------------------------
 # FUNCTION TO PROCESS DATASET
 # -------------------------------------------------------
