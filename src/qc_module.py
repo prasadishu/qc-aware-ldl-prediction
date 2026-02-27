@@ -1,11 +1,12 @@
 import numpy as np
 
-def apply_qc(predictions, reference):
+def apply_qc(predictions, direct_ldl):
+    residuals = predictions - direct_ldl
+    sd = np.std(residuals)
+    qc_predictions = predictions.copy()
 
-    mean = reference.mean()
-    std = reference.std()
+    for i in range(len(residuals)):
+        if abs(residuals[i]) > 3 * sd:
+            qc_predictions[i] = direct_ldl.iloc[i]
 
-    upper = mean + 2 * std
-    lower = mean - 2 * std
-
-    return np.clip(predictions, lower, upper)
+    return qc_predictions
