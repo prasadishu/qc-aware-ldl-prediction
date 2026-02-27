@@ -1,119 +1,52 @@
 import os
 import pandas as pd
-
 from data_loader import load_dataset
 from formulas import friedewald, martin, sampson
 from models import get_models
-from qc_module import apply_qc
 from evaluation import evaluate
-
-from performance_summary import generate_performance_summary
-from tg_stratified import tg_stratified_analysis
-from learning_curve_module import generate_learning_curves
+from qc_module import apply_qc
+from learning_curve_module import plot_learning_curve
+from plots import actual_vs_predicted, residual_vs_predicted
 from bland_altman import bland_altman_plot
+from performance_summary import save_performance
 
+os.makedirs("outputs/figures", exist_ok=True)
+os.makedirs("outputs/tables", exist_ok=True)
 
-# -------------------------------------------------------
-# Create results directories
-# -------------------------------------------------------
-os.makedirs("results", exist_ok=True)
-os.makedirs("results/figures", exist_ok=True)
+# Load Data
+df = load_dataset("data/LDL_Internal_Training_Test_Dataset1.xlsx")
 
+X = df[["TC", "HDL", "TG"]]
+y = df["Direct_LDL"]
 
-# -------------------------------------------------------
-# Load datasets
-# -------------------------------------------------------
-internal_df = load_dataset("data/LDL_Internal_Training_Test_Dataset1.xlsx")
-secondary_df = load_dataset("data/LDL_Secondary_Internal_Validation_Dataset1.xlsx")
+models = get_models()
+results = []
 
+for name, model in models.items():
+    model.fit(X, y)
+    predictions = model.predict(X)
 
-# -------------------------------------------------------
-# FUNCTION TO PROCESS DATASET
-# -------------------------------------------------------
-def process_dataset(df, dataset_name):
+    r2, rmse, mse, pcc = evaluate(y, predictions)
+    results.append({
+        "Model": name,
+        "R2": r2,
+        "RMSE": rmse,
+        "MSE": mse,
+        "PCC": pcc
+    })
 
-    print(f"\n🔹 Processing {dataset_name} dataset")
+    qc_predictions = apply_qc(predictions, y)
 
-    X = df[["TC", "TG", "HDL_C"]]
-    y = df["LDL_direct"]
+    actual_vs_predicted(y, predictions, name)
+    residual_vs_predicted(predictions, predictions - y, name)
+    plot_learning_curve(model, X, y, name)
+    bland_altman_plot(y, qc_predictions)
 
-    # ---------------------------------------------------
-    # 1️⃣ Calculate Formula-Based LDL
-    # ---------------------------------------------------
-    df["LDL_Friedewald"] = friedewald(df["TC"], df["TG"], df["HDL_C"])
-    df["LDL_Martin"] = martin(df["TC"], df["TG"], df["HDL_C"])
-    df["LDL_Sampson"] = sampson(df["TC"], df["TG"], df["HDL_C"])
+# Formula Predictions
+df["Friedewald"] = friedewald(df["TC"], df["HDL"], df["TG"])
+df["Martin"] = martin(df["TC"], df["HDL"], df["TG"])
+df["Sampson"] = sampson(df["TC"], df["HDL"], df["TG"])
 
-    # ---------------------------------------------------
-    # 2️⃣ Train ML Models + Apply QC
-    # ---------------------------------------------------
-    models = get_models()
+save_performance(results)
 
-    for name, model in models.items():
-
-        print(f"Training {name}...")
-
-        model.fit(X, y)
-        preds = model.predict(X)
-
-        preds_qc = apply_qc(preds, y)
-
-        df[f"LDL_{name}_QC"] = preds_qc
-
-    # ---------------------------------------------------
-    # 3️⃣ Save Prediction CSV
-    # ---------------------------------------------------
-    prediction_path = f"results/predictions_{dataset_name}.csv"
-    df.to_csv(prediction_path, index=False)
-    print(f"✅ Predictions saved → {prediction_path}")
-
-    # ---------------------------------------------------
-    # 4️⃣ Generate Performance Summary CSV
-    # ---------------------------------------------------
-    prediction_cols = [
-        "LDL_RandomForest_QC",
-        "LDL_XGBoost_QC",
-        "LDL_CatBoost_QC",
-        "LDL_SVR_QC",
-        "LDL_Martin",
-        "LDL_Friedewald",
-        "LDL_Sampson"
-    ]
-
-    summary_df = generate_performance_summary(df, prediction_cols)
-
-    print("\n📊 Performance Summary:")
-    print(summary_df)
-
-    # ---------------------------------------------------
-    # 5️⃣ TG-Stratified Analysis
-    # ---------------------------------------------------
-    tg_stratified_analysis(df, prediction_cols)
-
-    # ---------------------------------------------------
-    # 6️⃣ Bland–Altman Plots (ML models only)
-    # ---------------------------------------------------
-    for col in prediction_cols:
-        bland_altman_plot(
-            df["LDL_direct"],
-            df[col],
-            f"{col}_{dataset_name}"
-        )
-
-    # ---------------------------------------------------
-    # 7️⃣ Learning Curves (ML models only)
-    # ---------------------------------------------------
-    for name, model in models.items():
-        generate_learning_curves(model, X, y, f"{name}_{dataset_name}")
-
-    print(f"\n🎯 Completed {dataset_name} dataset.\n")
-
-
-# -------------------------------------------------------
-# RUN PIPELINE
-# -------------------------------------------------------
-process_dataset(LDL_Internal_Training_Test_Dataset1_df, "LDL_Internal_Training_Test_Dataset1")
-process_dataset(LDL_Secondary_Internal_Validation_Dataset1_df, "LDL_Secondary_Internal_Validation_Dataset1")
-
-print("\n🚀 All modules executed successfully.")
-
+print("Pipeline executed successfully.")
