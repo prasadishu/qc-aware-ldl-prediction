@@ -1,7 +1,8 @@
 pandas
 numpy
-matplotlib
 scikit-learn
 xgboost
 catboost
+matplotlib
+seaborn
 openpyxl
