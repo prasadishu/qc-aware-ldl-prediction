@@ -26,7 +26,7 @@ for name, model in models.items():
     model.fit(X, y)
     predictions = model.predict(X)
 
-    r2, rmse, mse, pcc = evaluate(y_test, predictions)
+    r2, rmse, mse, pcc = evaluate(y, predictions)
     results.append({
         "Model": name,
         "R2": r2,
