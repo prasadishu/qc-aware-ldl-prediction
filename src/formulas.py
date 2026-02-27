@@ -1,11 +1,11 @@
 import numpy as np
 
-def friedewald(tc, tg, hdl):
+def friedewald(tc, hdl, tg):
     return tc - hdl - (tg / 5)
 
-def martin(tc, tg, hdl):
-    adjustable_factor = np.where(tg < 150, 5, 6)
+def martin(tc, hdl, tg):
+    adjustable_factor = 5  # simplified
     return tc - hdl - (tg / adjustable_factor)
 
-def sampson(tc, tg, hdl):
-    return (tc / 0.948) - (hdl / 0.971) - ((tg / 8.56) + (tg * (tc - hdl) / 2140)) - 9.44
+def sampson(tc, hdl, tg):
+    return tc - hdl - (0.16 * tg) + (0.0003 * tg**2)
